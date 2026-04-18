@@ -1,0 +1,7 @@
+# Dependências Node
+frontend/node_modules/
+backend/node_modules/
+node_modules/
+
+# Next.js (build / cache)
+frontend/.next/

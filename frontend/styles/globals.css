@@ -1,0 +1,583 @@
+/* ===== TOKENS CSS — paleta agendamento (slate + teal) ===== */
+
+/* Padrão: UI escura neutra, acento teal (confiança, foco em horários) */
+:root {
+  --color-primary: #2dd4bf;
+  --color-primary-muted: #5eead4;
+  --color-primary-gradient-start: #0f766e;
+  --color-primary-gradient-end: #14b8a6;
+
+  --color-bg-primary: #0b1220;
+  --color-bg-secondary: #111827;
+
+  --color-text-primary: #f8fafc;
+  --color-text-secondary: #94a3b8;
+
+  --color-form-bg: #1e293b;
+  --color-form-border: #334155;
+
+  --color-button-normal: #0d9488;
+  --color-button-hover: #14b8a6;
+  --color-button-pressed: #0f766e;
+
+  /* Estados de agendamento */
+  --color-success: #34d399;
+  --color-warning: #fbbf24;
+  --color-error: #f87171;
+
+  --color-focus-ring: rgba(45, 212, 191, 0.35);
+  
+  /* Espaçamentos */
+  --spacing-xs: 4px;
+  --spacing-sm: 8px;
+  --spacing-md: 16px;
+  --spacing-lg: 24px;
+  --spacing-xl: 32px;
+  --spacing-2xl: 48px;
+  
+  /* Padding padrão */
+  --padding-sm: 12px;
+  
+  /* Sombras */
+  --shadow-sm: 0 2px 6px rgba(0, 0, 0, 0.24);
+  --shadow-md: 0 6px 14px rgba(0, 0, 0, 0.28);
+  --shadow-lg: 0 14px 28px rgba(0, 0, 0, 0.32);
+  --shadow-xl: 0 24px 46px rgba(0, 0, 0, 0.4);
+}
+
+[data-theme="dark"] {
+  --color-primary: #5eead4;
+  --color-primary-muted: #99f6e4;
+  --color-primary-gradient-start: #115e59;
+  --color-primary-gradient-end: #2dd4bf;
+
+  --color-bg-primary: #020617;
+  --color-bg-secondary: #0f172a;
+
+  --color-text-primary: #f1f5f9;
+  --color-text-secondary: #cbd5e1;
+
+  --color-form-bg: #1e293b;
+  --color-form-border: #475569;
+
+  --color-button-normal: #14b8a6;
+  --color-button-hover: #2dd4bf;
+  --color-button-pressed: #0d9488;
+
+  --color-success: #4ade80;
+  --color-warning: #fcd34d;
+  --color-error: #fca5a5;
+
+  --color-focus-ring: rgba(94, 234, 212, 0.4);
+  
+  /* Espaçamentos (mantêm as mesmas) */
+  --spacing-xs: 4px;
+  --spacing-sm: 8px;
+  --spacing-md: 16px;
+  --spacing-lg: 24px;
+  --spacing-xl: 32px;
+  --spacing-2xl: 48px;
+  
+  /* Padding padrão (mantém o mesmo) */
+  --padding-sm: 12px;
+  
+  /* Sombras */
+  --shadow-sm: 0 2px 8px rgba(0, 0, 0, 0.34);
+  --shadow-md: 0 8px 18px rgba(0, 0, 0, 0.38);
+  --shadow-lg: 0 16px 32px rgba(0, 0, 0, 0.44);
+  --shadow-xl: 0 28px 54px rgba(0, 0, 0, 0.5);
+}
+
+/* ===== RESET E ESTILOS BASE ===== */
+* {
+  margin: 0;
+  padding: 0;
+  box-sizing: border-box;
+}
+
+html,
+body {
+  font-family: "Segoe UI", "Montserrat", "Trebuchet MS", "Roboto", sans-serif;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+  height: 100%;
+  
+  /* Aplicar cores do tema automaticamente */
+  background-color: var(--color-bg-primary);
+  background-image:
+    radial-gradient(circle at 18% 18%, rgba(13, 148, 136, 0.12), transparent 32%),
+    radial-gradient(circle at 82% 8%, rgba(45, 212, 191, 0.07), transparent 36%),
+    linear-gradient(180deg, rgba(248, 250, 252, 0.03), rgba(15, 23, 42, 0.45));
+  color: var(--color-text-primary);
+  
+  /* Transição suave entre temas */
+  transition: background-color 0.3s ease, color 0.3s ease;
+}
+
+#__next {
+  height: 100%;
+}
+
+/* Utilitários */
+.flex {
+  display: flex;
+}
+
+.flex-col {
+  flex-direction: column;
+}
+
+.items-center {
+  align-items: center;
+}
+
+.justify-center {
+  justify-content: center;
+}
+
+.justify-between {
+  justify-content: space-between;
+}
+
+.space-y-8 > * + * {
+  margin-top: 2rem;
+}
+
+.space-y-6 > * + * {
+  margin-top: 1.5rem;
+}
+
+.space-y-2 > * + * {
+  margin-top: 0.5rem;
+}
+
+.space-x-2 > * + * {
+  margin-left: 0.5rem;
+}
+
+/* Tamanhos */
+.min-h-screen {
+  min-height: 100vh;
+}
+
+.h-screen {
+  height: 100vh;
+}
+
+.w-full {
+  width: 100%;
+}
+
+.max-w-md {
+  max-width: 28rem;
+}
+
+.w-80 {
+  width: 20rem;
+}
+
+.h-3 {
+  height: 0.75rem;
+}
+
+.w-3 {
+  width: 0.75rem;
+}
+
+/* ===== CLASSES UTILITÁRIAS COM TOKENS ===== */
+
+/* Cores de Fundo */
+.bg-primary {
+  background-color: var(--color-bg-primary);
+}
+
+.bg-secondary {
+  background-color: var(--color-bg-secondary);
+}
+
+.bg-form {
+  background-color: var(--color-form-bg);
+}
+
+.bg-button {
+  background-color: var(--color-button-normal);
+}
+
+.bg-button:hover {
+  background-color: var(--color-button-hover);
+}
+
+.bg-button:active {
+  background-color: var(--color-button-pressed);
+}
+
+.bg-success {
+  background-color: var(--color-success);
+}
+
+.bg-warning {
+  background-color: var(--color-warning);
+}
+
+.bg-error {
+  background-color: var(--color-error);
+}
+
+/* Cores de Texto */
+.text-primary {
+  color: var(--color-text-primary);
+}
+
+.text-secondary {
+  color: var(--color-text-secondary);
+}
+
+.text-button {
+  color: var(--color-button-normal);
+}
+
+.text-success {
+  color: var(--color-success);
+}
+
+.text-warning {
+  color: var(--color-warning);
+}
+
+.text-error {
+  color: var(--color-error);
+}
+
+/* Bordas */
+.border-form {
+  border-color: var(--color-form-border);
+}
+
+.border-primary {
+  border-color: var(--color-primary);
+}
+
+/* Gradientes */
+.bg-gradient-primary {
+  background: linear-gradient(135deg, var(--color-primary-gradient-start), var(--color-primary-gradient-end));
+}
+
+/* Estados de Hover */
+.hover\:bg-button:hover {
+  background-color: var(--color-button-hover);
+}
+
+.hover\:text-primary:hover {
+  color: var(--color-text-primary);
+}
+
+
+/* ===== CLASSES LEGADAS (tons slate / teal para calendário e cartões) ===== */
+.bg-gray-50 {
+  background-color: #f8fafc;
+}
+
+.bg-gray-100 {
+  background-color: #f1f5f9;
+}
+
+.bg-white {
+  background-color: #ffffff;
+}
+
+.bg-blue-50 {
+  background-color: #f0fdfa;
+}
+
+.bg-green-500 {
+  background-color: #059669;
+}
+
+.bg-gray-500 {
+  background-color: #64748b;
+}
+
+.bg-yellow-500 {
+  background-color: #d97706;
+}
+
+.bg-gray-400 {
+  background-color: #94a3b8;
+}
+
+.bg-blue-600 {
+  background-color: #0d9488;
+}
+
+.bg-red-600 {
+  background-color: #dc2626;
+}
+
+.bg-indigo-600 {
+  background-color: #0e7490;
+}
+
+.text-gray-900 {
+  color: #0f172a;
+}
+
+.text-gray-600 {
+  color: #475569;
+}
+
+.text-gray-500 {
+  color: #64748b;
+}
+
+.text-white {
+  color: #ffffff;
+}
+
+.text-red-600 {
+  color: #dc2626;
+}
+
+.text-lg {
+  font-size: 1.125rem;
+  line-height: 1.75rem;
+}
+
+.text-sm {
+  font-size: 0.875rem;
+  line-height: 1.25rem;
+}
+
+.text-xs {
+  font-size: 0.75rem;
+  line-height: 1rem;
+}
+
+.text-3xl {
+  font-size: 1.875rem;
+  line-height: 2.25rem;
+}
+
+.font-medium {
+  font-weight: 500;
+}
+
+.font-semibold {
+  font-weight: 600;
+}
+
+.font-extrabold {
+  font-weight: 800;
+}
+
+/* Bordas */
+.border {
+  border-width: 1px;
+}
+
+.border-b {
+  border-bottom-width: 1px;
+}
+
+.border-r {
+  border-right-width: 1px;
+}
+
+.border-l {
+  border-left-width: 1px;
+}
+
+.border-l-4 {
+  border-left-width: 4px;
+}
+
+.border-gray-200 {
+  border-color: #e2e8f0;
+}
+
+.border-gray-100 {
+  border-color: #f1f5f9;
+}
+
+.border-l-blue-500 {
+  border-left-color: #14b8a6;
+}
+
+.border-transparent {
+  border-color: transparent;
+}
+
+.rounded {
+  border-radius: 0.25rem;
+}
+
+.rounded-md {
+  border-radius: 0.375rem;
+}
+
+.rounded-t-md {
+  border-top-left-radius: 0.375rem;
+  border-top-right-radius: 0.375rem;
+}
+
+.rounded-b-md {
+  border-bottom-left-radius: 0.375rem;
+  border-bottom-right-radius: 0.375rem;
+}
+
+.rounded-full {
+  border-radius: 9999px;
+}
+
+/* Padding */
+.p-4 {
+  padding: 1rem;
+}
+
+.px-3 {
+  padding-left: 0.75rem;
+  padding-right: 0.75rem;
+}
+
+.py-2 {
+  padding-top: 0.5rem;
+  padding-bottom: 0.5rem;
+}
+
+.px-4 {
+  padding-left: 1rem;
+  padding-right: 1rem;
+}
+
+.py-1 {
+  padding-top: 0.25rem;
+  padding-bottom: 0.25rem;
+}
+
+.px-3 {
+  padding-left: 0.75rem;
+  padding-right: 0.75rem;
+}
+
+/* Margin */
+.mt-6 {
+  margin-top: 1.5rem;
+}
+
+.mt-8 {
+  margin-top: 2rem;
+}
+
+.mt-2 {
+  margin-top: 0.5rem;
+}
+
+.mb-2 {
+  margin-bottom: 0.5rem;
+}
+
+/* ===== ESTILOS DE FORMULÁRIO COM TOKENS ===== */
+input, textarea, select {
+  background-color: var(--color-form-bg);
+  border-color: var(--color-form-border);
+  color: var(--color-text-primary);
+  transition: border-color 0.3s ease, background-color 0.3s ease;
+}
+
+input:focus, textarea:focus, select:focus {
+  border-color: var(--color-primary);
+  outline: none;
+  box-shadow: 0 0 0 2px var(--color-focus-ring);
+}
+
+/* Botões com tokens */
+button {
+  background-color: var(--color-button-normal);
+  color: white;
+  border: none;
+  transition: background-color 0.3s ease;
+}
+
+button:hover {
+  background-color: var(--color-button-hover);
+}
+
+button:active {
+  background-color: var(--color-button-pressed);
+}
+
+button:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+/* ===== ESTADOS LEGADOS (MANTIDOS PARA COMPATIBILIDADE) ===== */
+.hover\:bg-gray-50:hover {
+  background-color: #f8fafc;
+}
+
+.hover\:bg-blue-700:hover {
+  background-color: #0f766e;
+}
+
+.hover\:bg-red-700:hover {
+  background-color: #b91c1c;
+}
+
+.hover\:bg-indigo-700:hover {
+  background-color: #155e75;
+}
+
+.focus\:outline-none:focus {
+  outline: 2px solid transparent;
+  outline-offset: 2px;
+}
+
+.focus\:ring-2:focus {
+  --tw-ring-offset-shadow: var(--tw-ring-inset) 0 0 0 var(--tw-ring-offset-width) var(--tw-ring-offset-color);
+  --tw-ring-shadow: var(--tw-ring-inset) 0 0 0 calc(2px + var(--tw-ring-offset-width)) var(--tw-ring-color);
+  box-shadow: var(--tw-ring-offset-shadow), var(--tw-ring-shadow), var(--tw-shadow, 0 0 #0000);
+}
+
+.focus\:ring-indigo-500:focus {
+  --tw-ring-opacity: 1;
+  --tw-ring-color: rgb(20 184 166 / var(--tw-ring-opacity));
+}
+
+.focus\:border-indigo-500:focus {
+  border-color: #14b8a6;
+}
+
+.focus\:z-10:focus {
+  z-index: 10;
+}
+
+.disabled\:opacity-50:disabled {
+  opacity: 0.5;
+}
+
+/* Layout */
+.flex-1 {
+  flex: 1 1 0%;
+}
+
+.overflow-y-auto {
+  overflow-y: auto;
+}
+
+.cursor-pointer {
+  cursor: pointer;
+}
+
+.truncate {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+/* Responsividade */
+@media (min-width: 640px) {
+  .sm\:text-sm {
+    font-size: 0.875rem;
+    line-height: 1.25rem;
+  }
+}
