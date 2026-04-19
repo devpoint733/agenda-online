@@ -5,3 +5,9 @@ node_modules/
 
 # Next.js (build / cache)
 frontend/.next/
+
+# Variáveis de ambiente (frontend e backend)
+frontend/.env*
+!frontend/.env.example
+backend/.env*
+!backend/.env.example
