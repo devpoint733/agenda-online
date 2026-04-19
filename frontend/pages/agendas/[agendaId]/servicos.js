@@ -1,9 +1,11 @@
 import Head from "next/head";
 import { useRouter } from "next/router";
 import { useCallback, useEffect, useState } from "react";
+import { Pencil, Plus, Trash2 } from "lucide-react";
 import { useAuth } from "../../../hooks/useAuth";
 import { api } from "../../../lib/api";
 import AgendaLayout from "../../../components/layout/AgendaLayout";
+import Modal from "../../../components/configuracao/Modal";
 import s from "../../../styles/pages.module.css";
 
 export default function AgendaServicosPage() {
@@ -18,6 +20,8 @@ export default function AgendaServicosPage() {
   const [duracao_minutos, setDuracao] = useState("30");
   const [preco, setPreco] = useState("");
   const [saving, setSaving] = useState(false);
+  const [modalOpen, setModalOpen] = useState(false);
+  const [editId, setEditId] = useState(null);
 
   const load = useCallback(async () => {
     if (!agendaId) return;
@@ -42,13 +46,31 @@ export default function AgendaServicosPage() {
     load();
   }, [load]);
 
-  async function criar(e) {
+  function openCreateModal() {
+    setEditId(null);
+    setNome("");
+    setDescricao("");
+    setDuracao("30");
+    setPreco("");
+    setModalOpen(true);
+  }
+
+  function openEditModal(servico) {
+    setEditId(servico.id);
+    setNome(servico.nome || "");
+    setDescricao(servico.descricao || "");
+    setDuracao(String(servico.duracao_minutos || 30));
+    setPreco(servico.preco != null ? String(servico.preco) : "");
+    setModalOpen(true);
+  }
+
+  async function salvar(e) {
     e.preventDefault();
     setSaving(true);
     setError("");
     try {
-      await api(`/agendas/${agendaId}/servicos`, {
-        method: "POST",
+      await api(`/agendas/${agendaId}/servicos${editId ? `/${editId}` : ""}`, {
+        method: editId ? "PUT" : "POST",
         json: {
           nome,
           descricao: descricao || undefined,
@@ -60,6 +82,8 @@ export default function AgendaServicosPage() {
       setDescricao("");
       setDuracao("30");
       setPreco("");
+      setEditId(null);
+      setModalOpen(false);
       await load();
     } catch (err) {
       setError(err.message || "Não foi possível salvar");
@@ -100,37 +124,15 @@ export default function AgendaServicosPage() {
       ) : null}
 
       <div className={s.card}>
-        <h2 className={s.muted} style={{ margin: "0 0 var(--spacing-md)", fontSize: "1rem", fontWeight: 600 }}>
-          Novo serviço
-        </h2>
-        <form onSubmit={criar} className={s.formStack}>
-          <div>
-            <label className={s.label}>Nome</label>
-            <input className={s.input} value={nome} onChange={(e) => setNome(e.target.value)} required />
-          </div>
-          <div>
-            <label className={s.label}>Descrição</label>
-            <textarea className={s.textarea} value={descricao} onChange={(e) => setDescricao(e.target.value)} />
-          </div>
-          <div>
-            <label className={s.label}>Duração (minutos)</label>
-            <input
-              className={s.input}
-              type="number"
-              min={1}
-              value={duracao_minutos}
-              onChange={(e) => setDuracao(e.target.value)}
-              required
-            />
-          </div>
-          <div>
-            <label className={s.label}>Preço (opcional, número inteiro)</label>
-            <input className={s.input} type="number" min={0} value={preco} onChange={(e) => setPreco(e.target.value)} />
-          </div>
-          <button type="submit" className={s.btnPrimary} disabled={saving}>
-            {saving ? "Salvando…" : "Adicionar"}
+        <div className={s.rowBetween} style={{ alignItems: "center" }}>
+          <p className={s.muted} style={{ margin: 0 }}>
+            Cadastre e mantenha seus serviços por aqui.
+          </p>
+          <button type="button" className={s.btnPrimary} onClick={openCreateModal}>
+            <Plus size={16} />
+            <span style={{ marginLeft: 8 }}>Novo serviço</span>
           </button>
-        </form>
+        </div>
       </div>
 
       <div className={s.cardList}>
@@ -144,13 +146,73 @@ export default function AgendaServicosPage() {
                   {x.preco != null ? ` · preço ${x.preco}` : ""}
                 </p>
               </div>
-              <button type="button" className={s.btnGhost} onClick={() => remover(x.id)}>
-                Excluir
-              </button>
+              <div className={s.btnRow}>
+                <button
+                  type="button"
+                  className={s.iconBtn}
+                  title="Editar serviço"
+                  aria-label="Editar serviço"
+                  onClick={() => openEditModal(x)}
+                >
+                  <Pencil size={16} />
+                </button>
+                <button
+                  type="button"
+                  className={s.iconBtn}
+                  title="Excluir serviço"
+                  aria-label="Excluir serviço"
+                  onClick={() => remover(x.id)}
+                >
+                  <Trash2 size={16} />
+                </button>
+              </div>
             </div>
           </div>
         ))}
       </div>
+
+      {modalOpen ? (
+        <Modal
+          title={editId ? "Editar serviço" : "Novo serviço"}
+          onClose={() => setModalOpen(false)}
+          actions={
+            <>
+              <button type="button" className={s.btnGhost} onClick={() => setModalOpen(false)}>
+                Cancelar
+              </button>
+              <button type="submit" form="servico-form" className={s.btnPrimary} disabled={saving}>
+                {saving ? "Salvando..." : "Salvar"}
+              </button>
+            </>
+          }
+        >
+          <form id="servico-form" onSubmit={salvar} className={s.formStack}>
+            <div>
+              <label className={s.label}>Nome</label>
+              <input className={s.input} value={nome} onChange={(e) => setNome(e.target.value)} required />
+            </div>
+            <div>
+              <label className={s.label}>Descrição</label>
+              <textarea className={s.textarea} value={descricao} onChange={(e) => setDescricao(e.target.value)} />
+            </div>
+            <div>
+              <label className={s.label}>Duração (minutos)</label>
+              <input
+                className={s.input}
+                type="number"
+                min={1}
+                value={duracao_minutos}
+                onChange={(e) => setDuracao(e.target.value)}
+                required
+              />
+            </div>
+            <div>
+              <label className={s.label}>Preço (opcional, número inteiro)</label>
+              <input className={s.input} type="number" min={0} value={preco} onChange={(e) => setPreco(e.target.value)} />
+            </div>
+          </form>
+        </Modal>
+      ) : null}
     </AgendaLayout>
   );
 }

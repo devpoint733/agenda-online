@@ -1,9 +1,11 @@
 import Head from "next/head";
 import { useRouter } from "next/router";
 import { useCallback, useEffect, useState } from "react";
+import { Pencil, Plus, Trash2 } from "lucide-react";
 import { useAuth } from "../../../hooks/useAuth";
 import { api } from "../../../lib/api";
 import AgendaLayout from "../../../components/layout/AgendaLayout";
+import Modal from "../../../components/configuracao/Modal";
 import s from "../../../styles/pages.module.css";
 
 export default function AgendaClientesPage() {
@@ -18,6 +20,8 @@ export default function AgendaClientesPage() {
   const [telefone, setTelefone] = useState("");
   const [observacoes, setObs] = useState("");
   const [saving, setSaving] = useState(false);
+  const [modalOpen, setModalOpen] = useState(false);
+  const [editId, setEditId] = useState(null);
 
   const load = useCallback(async () => {
     if (!agendaId) return;
@@ -42,19 +46,44 @@ export default function AgendaClientesPage() {
     load();
   }, [load]);
 
-  async function criar(e) {
+  function openCreateModal() {
+    setEditId(null);
+    setNome("");
+    setEmail("");
+    setTelefone("");
+    setObs("");
+    setModalOpen(true);
+  }
+
+  function openEditModal(cliente) {
+    setEditId(cliente.id);
+    setNome(cliente.nome_completo || "");
+    setEmail(cliente.email || "");
+    setTelefone(cliente.telefone || "");
+    setObs(cliente.observacoes || "");
+    setModalOpen(true);
+  }
+
+  async function salvar(e) {
     e.preventDefault();
     setSaving(true);
     setError("");
     try {
-      await api(`/agendas/${agendaId}/clientes`, {
-        method: "POST",
-        json: { nome_completo, email, telefone, observacoes: observacoes || undefined },
+      await api(`/agendas/${agendaId}/clientes${editId ? `/${editId}` : ""}`, {
+        method: editId ? "PUT" : "POST",
+        json: {
+          nome_completo,
+          email,
+          telefone,
+          observacoes: observacoes || undefined,
+        },
       });
       setNome("");
       setEmail("");
       setTelefone("");
       setObs("");
+      setEditId(null);
+      setModalOpen(false);
       await load();
     } catch (err) {
       setError(err.message || "Não foi possível salvar");
@@ -95,36 +124,15 @@ export default function AgendaClientesPage() {
       ) : null}
 
       <div className={s.card}>
-        <h2 className={s.muted} style={{ margin: "0 0 var(--spacing-md)", fontSize: "1rem", fontWeight: 600 }}>
-          Novo cliente
-        </h2>
-        <form onSubmit={criar} className={s.formStack}>
-          <div>
-            <label className={s.label}>Nome completo</label>
-            <input className={s.input} value={nome_completo} onChange={(e) => setNome(e.target.value)} required />
-          </div>
-          <div>
-            <label className={s.label}>E-mail</label>
-            <input className={s.input} type="email" value={email} onChange={(e) => setEmail(e.target.value)} required />
-          </div>
-          <div>
-            <label className={s.label}>Telefone</label>
-            <input
-              className={s.input}
-              inputMode="tel"
-              value={telefone}
-              onChange={(e) => setTelefone(e.target.value)}
-              required
-            />
-          </div>
-          <div>
-            <label className={s.label}>Observações</label>
-            <textarea className={s.textarea} value={observacoes} onChange={(e) => setObs(e.target.value)} />
-          </div>
-          <button type="submit" className={s.btnPrimary} disabled={saving}>
-            {saving ? "Salvando…" : "Adicionar"}
+        <div className={s.rowBetween} style={{ alignItems: "center" }}>
+          <p className={s.muted} style={{ margin: 0 }}>
+            Cadastre e edite clientes da agenda.
+          </p>
+          <button type="button" className={s.btnPrimary} onClick={openCreateModal}>
+            <Plus size={16} />
+            <span style={{ marginLeft: 8 }}>Novo cliente</span>
           </button>
-        </form>
+        </div>
       </div>
 
       <div className={s.cardList}>
@@ -137,13 +145,72 @@ export default function AgendaClientesPage() {
                   {c.email} · {c.telefone}
                 </p>
               </div>
-              <button type="button" className={s.btnGhost} onClick={() => remover(c.id)}>
-                Excluir
-              </button>
+              <div className={s.btnRow}>
+                <button
+                  type="button"
+                  className={s.iconBtn}
+                  title="Editar cliente"
+                  aria-label="Editar cliente"
+                  onClick={() => openEditModal(c)}
+                >
+                  <Pencil size={16} />
+                </button>
+                <button
+                  type="button"
+                  className={s.iconBtn}
+                  title="Excluir cliente"
+                  aria-label="Excluir cliente"
+                  onClick={() => remover(c.id)}
+                >
+                  <Trash2 size={16} />
+                </button>
+              </div>
             </div>
           </div>
         ))}
       </div>
+
+      {modalOpen ? (
+        <Modal
+          title={editId ? "Editar cliente" : "Novo cliente"}
+          onClose={() => setModalOpen(false)}
+          actions={
+            <>
+              <button type="button" className={s.btnGhost} onClick={() => setModalOpen(false)}>
+                Cancelar
+              </button>
+              <button type="submit" form="cliente-form" className={s.btnPrimary} disabled={saving}>
+                {saving ? "Salvando…" : "Salvar"}
+              </button>
+            </>
+          }
+        >
+          <form id="cliente-form" onSubmit={salvar} className={s.formStack}>
+            <div>
+              <label className={s.label}>Nome completo</label>
+              <input className={s.input} value={nome_completo} onChange={(e) => setNome(e.target.value)} required />
+            </div>
+            <div>
+              <label className={s.label}>E-mail</label>
+              <input className={s.input} type="email" value={email} onChange={(e) => setEmail(e.target.value)} required />
+            </div>
+            <div>
+              <label className={s.label}>Telefone</label>
+              <input
+                className={s.input}
+                inputMode="tel"
+                value={telefone}
+                onChange={(e) => setTelefone(e.target.value)}
+                required
+              />
+            </div>
+            <div>
+              <label className={s.label}>Observações</label>
+              <textarea className={s.textarea} value={observacoes} onChange={(e) => setObs(e.target.value)} />
+            </div>
+          </form>
+        </Modal>
+      ) : null}
     </AgendaLayout>
   );
 }

@@ -1,12 +1,24 @@
 import Head from "next/head";
 import { useRouter } from "next/router";
-import { useCallback, useEffect, useState } from "react";
+import { useCallback, useEffect, useMemo, useState } from "react";
 import { format, parseISO } from "date-fns";
 import { ptBR } from "date-fns/locale";
+import { DndContext, PointerSensor, useSensor, useSensors, closestCorners } from "@dnd-kit/core";
+import { SortableContext, verticalListSortingStrategy, useSortable } from "@dnd-kit/sortable";
+import { CSS } from "@dnd-kit/utilities";
 import { useAuth } from "../../../hooks/useAuth";
 import { api } from "../../../lib/api";
 import AgendaLayout from "../../../components/layout/AgendaLayout";
+import Modal from "../../../components/configuracao/Modal";
 import s from "../../../styles/pages.module.css";
+
+const COLUMNS = [
+  { key: "pendente", label: "Pendente" },
+  { key: "confirmado", label: "Confirmado" },
+  { key: "concluido", label: "Concluído" },
+  { key: "cancelado", label: "Cancelado" },
+  { key: "nao_compareceu", label: "Não compareceu" },
+];
 
 function fmt(dt) {
   if (!dt) return "—";
@@ -32,6 +44,63 @@ function toMysqlDatetime(v) {
   return x.length === 16 ? `${x}:00` : x;
 }
 
+function AgendamentoCard({ item, clienteNome, servicoNome, mobile = false }) {
+  const { attributes, listeners, setNodeRef, transform, transition, isDragging } = useSortable({
+    id: String(item.id),
+    data: { type: "item", item },
+  });
+
+  const style = {
+    transform: CSS.Transform.toString(transform),
+    transition,
+    opacity: isDragging ? 0.5 : 1,
+  };
+
+  return (
+    <div ref={setNodeRef} style={style} className={s.kanbanCard} {...attributes} {...listeners}>
+      <div className={s.rowBetween}>
+        <span className={`${s.badge} ${badgeClass(item.situacao)}`}>{item.situacao?.replace("_", " ")}</span>
+        {!mobile ? <span className={s.muted}>#{item.id}</span> : null}
+      </div>
+      <p className={s.kanbanTitle}>{clienteNome || "Cliente"}</p>
+      <p className={s.muted} style={{ margin: "0 0 6px" }}>
+        {servicoNome || "Serviço"}
+      </p>
+      <p className={s.muted} style={{ margin: 0 }}>
+        {fmt(item.inicio_em)} - {fmt(item.fim_em)}
+      </p>
+    </div>
+  );
+}
+
+function ColumnDroppable({ col, items, clienteMap, servicoMap }) {
+  const { setNodeRef } = useSortable({
+    id: `col-${col.key}`,
+    data: { type: "column", status: col.key },
+  });
+
+  return (
+    <section ref={setNodeRef} className={s.kanbanColumn}>
+      <div className={s.rowBetween} style={{ alignItems: "center", marginBottom: 8 }}>
+        <h3 className={s.kanbanColumnTitle}>{col.label}</h3>
+        <span className={s.badge + " " + s.badgeNeu}>{items.length}</span>
+      </div>
+      <SortableContext items={items.map((x) => String(x.id))} strategy={verticalListSortingStrategy}>
+        <div className={s.kanbanList}>
+          {items.map((r) => (
+            <AgendamentoCard
+              key={r.id}
+              item={r}
+              clienteNome={clienteMap.get(r.cliente_id)}
+              servicoNome={servicoMap.get(r.servico_id)}
+            />
+          ))}
+        </div>
+      </SortableContext>
+    </section>
+  );
+}
+
 export default function AgendaAgendamentosPage() {
   const router = useRouter();
   const { agendaId } = router.query;
@@ -41,12 +110,25 @@ export default function AgendaAgendamentosPage() {
   const [servicos, setServicos] = useState([]);
   const [error, setError] = useState("");
   const [agendaNome, setAgendaNome] = useState("");
+  const [modalOpen, setModalOpen] = useState(false);
+  const [mobileStatus, setMobileStatus] = useState("pendente");
   const [clienteId, setClienteId] = useState("");
   const [servicoId, setServicoId] = useState("");
   const [inicio, setInicio] = useState("");
   const [fim, setFim] = useState("");
   const [situacao, setSituacao] = useState("confirmado");
   const [saving, setSaving] = useState(false);
+  const sensors = useSensors(useSensor(PointerSensor, { activationConstraint: { distance: 6 } }));
+
+  const clienteMap = useMemo(() => new Map(clientes.map((c) => [c.id, c.nome_completo])), [clientes]);
+  const servicoMap = useMemo(() => new Map(servicos.map((x) => [x.id, x.nome])), [servicos]);
+  const rowsByStatus = useMemo(() => {
+    const map = {};
+    COLUMNS.forEach((c) => {
+      map[c.key] = rows.filter((r) => r.situacao === c.key).sort((a, b) => new Date(a.inicio_em) - new Date(b.inicio_em));
+    });
+    return map;
+  }, [rows]);
 
   const load = useCallback(async () => {
     if (!agendaId) return;
@@ -96,6 +178,7 @@ export default function AgendaAgendamentosPage() {
       setInicio("");
       setFim("");
       setSituacao("confirmado");
+      setModalOpen(false);
       await load();
     } catch (err) {
       setError(err.message || "Não foi possível criar");
@@ -114,6 +197,24 @@ export default function AgendaAgendamentosPage() {
     } catch (err) {
       setError(err.message || "Erro ao atualizar");
     }
+  }
+
+  function getDropStatus(overId) {
+    if (!overId) return null;
+    if (String(overId).startsWith("col-")) return String(overId).replace("col-", "");
+    const target = rows.find((r) => String(r.id) === String(overId));
+    return target?.situacao || null;
+  }
+
+  async function onDragEnd(event) {
+    const { active, over } = event;
+    if (!over) return;
+    const id = Number(active.id);
+    const current = rows.find((r) => r.id === id);
+    if (!current) return;
+    const nextStatus = getDropStatus(over.id);
+    if (!nextStatus || nextStatus === current.situacao) return;
+    await patchSituacao(id, nextStatus);
   }
 
   if (!agendaId || loading || !user) {
@@ -137,105 +238,131 @@ export default function AgendaAgendamentosPage() {
         </p>
       ) : null}
 
-      <div className={s.card}>
-        <h2 className={s.muted} style={{ margin: "0 0 var(--spacing-md)", fontSize: "1rem", fontWeight: 600 }}>
-          Novo agendamento
-        </h2>
-        <form onSubmit={criar} className={s.formStack}>
-          <div>
-            <label className={s.label}>Cliente</label>
-            <select
-              className={s.select}
-              value={clienteId}
-              onChange={(e) => setClienteId(e.target.value)}
-              required
-            >
-              <option value="">Selecione</option>
-              {clientes.map((c) => (
-                <option key={c.id} value={c.id}>
-                  {c.nome_completo}
-                </option>
-              ))}
-            </select>
-          </div>
-          <div>
-            <label className={s.label}>Serviço</label>
-            <select
-              className={s.select}
-              value={servicoId}
-              onChange={(e) => setServicoId(e.target.value)}
-              required
-            >
-              <option value="">Selecione</option>
-              {servicos.map((x) => (
-                <option key={x.id} value={x.id}>
-                  {x.nome}
-                </option>
-              ))}
-            </select>
-          </div>
-          <div>
-            <label className={s.label}>Início</label>
-            <input
-              className={s.input}
-              type="datetime-local"
-              value={inicio}
-              onChange={(e) => setInicio(e.target.value)}
-              required
-            />
-          </div>
-          <div>
-            <label className={s.label}>Fim</label>
-            <input
-              className={s.input}
-              type="datetime-local"
-              value={fim}
-              onChange={(e) => setFim(e.target.value)}
-              required
-            />
-          </div>
-          <div>
-            <label className={s.label}>Situação inicial</label>
-            <select className={s.select} value={situacao} onChange={(e) => setSituacao(e.target.value)}>
-              <option value="pendente">Pendente</option>
-              <option value="confirmado">Confirmado</option>
-              <option value="cancelado">Cancelado</option>
-              <option value="concluido">Concluído</option>
-              <option value="nao_compareceu">Não compareceu</option>
-            </select>
-          </div>
-          <button type="submit" className={s.btnPrimary} disabled={saving}>
-            {saving ? "Salvando…" : "Salvar"}
+      <div className={s.card} style={{ marginBottom: "var(--spacing-md)" }}>
+        <div className={s.rowBetween} style={{ alignItems: "center" }}>
+          <p className={s.muted} style={{ margin: 0 }}>
+            Arraste entre colunas para mudar status.
+          </p>
+          <button type="button" className={s.btnPrimary} onClick={() => setModalOpen(true)}>
+            Novo agendamento
           </button>
-        </form>
+        </div>
       </div>
 
-      <div className={s.cardList}>
-        {rows.map((r) => (
-          <div key={r.id} className={s.card}>
-            <div className={s.rowBetween}>
-              <div>
+      <div className={s.mobileOnly}>
+        <div className={s.tabs} role="tablist">
+          {COLUMNS.map((c) => (
+            <button
+              key={c.key}
+              type="button"
+              className={`${s.tab} ${mobileStatus === c.key ? s.tabActive : ""}`}
+              onClick={() => setMobileStatus(c.key)}
+            >
+              {c.label} ({rowsByStatus[c.key]?.length || 0})
+            </button>
+          ))}
+        </div>
+        <div className={s.cardList}>
+          {(rowsByStatus[mobileStatus] || []).map((r) => (
+            <div key={r.id} className={s.card}>
+              <div className={s.rowBetween}>
                 <span className={`${s.badge} ${badgeClass(r.situacao)}`}>{r.situacao?.replace("_", " ")}</span>
-                <p style={{ margin: "10px 0 4px", fontWeight: 600 }}>{fmt(r.inicio_em)}</p>
-                <p className={s.muted} style={{ margin: 0 }}>
-                  até {fmt(r.fim_em)}
-                </p>
+                <span className={s.muted}>#{r.id}</span>
+              </div>
+              <p style={{ margin: "10px 0 4px", fontWeight: 600 }}>{clienteMap.get(r.cliente_id) || "Cliente"}</p>
+              <p className={s.muted} style={{ margin: "0 0 6px" }}>
+                {servicoMap.get(r.servico_id) || "Serviço"}
+              </p>
+              <p className={s.muted} style={{ margin: 0 }}>
+                {fmt(r.inicio_em)} - {fmt(r.fim_em)}
+              </p>
+              <div className={s.btnRow} style={{ marginTop: 10 }}>
+                {COLUMNS.filter((c) => c.key !== r.situacao).map((c) => (
+                  <button key={c.key} type="button" className={s.btnGhost} onClick={() => patchSituacao(r.id, c.key)}>
+                    {c.label}
+                  </button>
+                ))}
               </div>
             </div>
-            <div className={s.btnRow} style={{ marginTop: 12 }}>
-              <button type="button" className={s.btnGhost} onClick={() => patchSituacao(r.id, "confirmado")}>
-                Confirmar
-              </button>
-              <button type="button" className={s.btnGhost} onClick={() => patchSituacao(r.id, "concluido")}>
-                Concluir
-              </button>
-              <button type="button" className={s.btnGhost} onClick={() => patchSituacao(r.id, "cancelado")}>
+          ))}
+        </div>
+      </div>
+
+      <div className={s.desktopOnly}>
+        <DndContext sensors={sensors} collisionDetection={closestCorners} onDragEnd={onDragEnd}>
+          <div className={s.kanbanBoard}>
+            {COLUMNS.map((col) => (
+              <ColumnDroppable
+                key={col.key}
+                col={col}
+                items={rowsByStatus[col.key] || []}
+                clienteMap={clienteMap}
+                servicoMap={servicoMap}
+              />
+            ))}
+          </div>
+        </DndContext>
+      </div>
+
+      {modalOpen ? (
+        <Modal
+          title="Novo agendamento"
+          onClose={() => setModalOpen(false)}
+          actions={
+            <>
+              <button type="button" className={s.btnGhost} onClick={() => setModalOpen(false)}>
                 Cancelar
               </button>
+              <button type="submit" form="agendamento-create-form" className={s.btnPrimary} disabled={saving}>
+                {saving ? "Salvando..." : "Salvar"}
+              </button>
+            </>
+          }
+        >
+          <form id="agendamento-create-form" onSubmit={criar} className={s.formStack}>
+            <div>
+              <label className={s.label}>Cliente</label>
+              <select className={s.select} value={clienteId} onChange={(e) => setClienteId(e.target.value)} required>
+                <option value="">Selecione</option>
+                {clientes.map((c) => (
+                  <option key={c.id} value={c.id}>
+                    {c.nome_completo}
+                  </option>
+                ))}
+              </select>
             </div>
-          </div>
-        ))}
-      </div>
+            <div>
+              <label className={s.label}>Serviço</label>
+              <select className={s.select} value={servicoId} onChange={(e) => setServicoId(e.target.value)} required>
+                <option value="">Selecione</option>
+                {servicos.map((x) => (
+                  <option key={x.id} value={x.id}>
+                    {x.nome}
+                  </option>
+                ))}
+              </select>
+            </div>
+            <div>
+              <label className={s.label}>Início</label>
+              <input className={s.input} type="datetime-local" value={inicio} onChange={(e) => setInicio(e.target.value)} required />
+            </div>
+            <div>
+              <label className={s.label}>Fim</label>
+              <input className={s.input} type="datetime-local" value={fim} onChange={(e) => setFim(e.target.value)} required />
+            </div>
+            <div>
+              <label className={s.label}>Situação inicial</label>
+              <select className={s.select} value={situacao} onChange={(e) => setSituacao(e.target.value)}>
+                {COLUMNS.map((c) => (
+                  <option key={c.key} value={c.key}>
+                    {c.label}
+                  </option>
+                ))}
+              </select>
+            </div>
+          </form>
+        </Modal>
+      ) : null}
     </AgendaLayout>
   );
 }
