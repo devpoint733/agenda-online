@@ -1,5 +1,5 @@
 {
-  "name": "contrato-frontend",
+  "name": "agenda-online",
   "version": "0.1.0",
   "private": true,
   "scripts": {
@@ -51,8 +51,6 @@
     "recharts": "^2.15.3",
     "rehype-raw": "^7.0.0",
     "remark-gfm": "^4.0.1",
-    "slate": "^0.117.2",
-    "slate-react": "^0.117.4",
     "socket.io-client": "^4.8.1",
     "toastify": "^2.0.1",
     "uuid": "^11.1.0"
