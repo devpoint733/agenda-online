@@ -90,7 +90,7 @@ router.get("/agendas/:slug/disponibilidade", async (req, res) => {
     if (!servico) return res.status(404).json({ error: "Serviço não encontrado." });
 
     const windows = await getEffectiveWindows(agenda.id, date);
-    if (windows.length === 0) return res.json({ slots: [] });
+    if (windows.length === 0) return res.json({ slots: [], grade: [] });
 
     const [bookings] = await pool.query(
       `SELECT inicio_em, fim_em FROM agendamentos
@@ -102,6 +102,7 @@ router.get("/agendas/:slug/disponibilidade", async (req, res) => {
 
     const now = new Date();
     const slots = [];
+    const grade = [];
     const stepMinutes = 15;
 
     windows.forEach((w) => {
@@ -115,7 +116,16 @@ router.get("/agendas/:slug/disponibilidade", async (req, res) => {
           overlaps(cursor, endCandidate, new Date(b.inicio_em), new Date(b.fim_em))
         );
 
-        if (!hasOverlap && cursor > now) {
+        const isPast = cursor <= now;
+        const status = hasOverlap ? "ocupado" : isPast ? "passado" : "disponivel";
+
+        grade.push({
+          inicio_em: toMySqlDateTime(cursor),
+          fim_em: toMySqlDateTime(endCandidate),
+          status,
+        });
+
+        if (status === "disponivel") {
           slots.push({
             inicio_em: toMySqlDateTime(cursor),
             fim_em: toMySqlDateTime(endCandidate),
@@ -125,7 +135,7 @@ router.get("/agendas/:slug/disponibilidade", async (req, res) => {
       }
     });
 
-    res.json({ slots });
+    res.json({ slots, grade });
   } catch (error) {
     console.error(error);
     res.status(500).json({ error: "Erro ao calcular disponibilidade." });

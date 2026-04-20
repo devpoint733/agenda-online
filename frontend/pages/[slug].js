@@ -22,6 +22,12 @@ function formatSlot(dt) {
   return date.toLocaleTimeString("pt-BR", { hour: "2-digit", minute: "2-digit" });
 }
 
+const STEPS = [
+  { id: "servico", label: "Serviço" },
+  { id: "horario", label: "Agenda" },
+  { id: "dados", label: "Seus dados" },
+];
+
 export default function PublicAgendaPage() {
   const router = useRouter();
   const { slug } = router.query;
@@ -35,7 +41,9 @@ export default function PublicAgendaPage() {
   const [servicoId, setServicoId] = useState("");
   const [date, setDate] = useState(toDateInput(0));
   const [slots, setSlots] = useState([]);
+  const [slotGrid, setSlotGrid] = useState([]);
   const [slot, setSlot] = useState(null);
+  const [step, setStep] = useState(0);
 
   const [nome, setNome] = useState("");
   const [email, setEmail] = useState("");
@@ -80,6 +88,7 @@ export default function PublicAgendaPage() {
     (async () => {
       setError("");
       setSlot(null);
+      setSlotGrid([]);
       try {
         const qs = new URLSearchParams({ date, servico_id: String(servicoId) });
         const res = await fetch(`${API}/public/agendas/${slug}/disponibilidade?${qs.toString()}`);
@@ -87,10 +96,12 @@ export default function PublicAgendaPage() {
         if (!res.ok) throw new Error(data?.error || "Falha ao carregar horários.");
         if (!mounted) return;
         setSlots(data.slots || []);
+        setSlotGrid(data.grade || []);
       } catch (e) {
         if (mounted) {
           setError(e.message);
           setSlots([]);
+          setSlotGrid([]);
         }
       }
     })();
@@ -98,6 +109,30 @@ export default function PublicAgendaPage() {
       mounted = false;
     };
   }, [slug, servicoId, date]);
+
+  function selectServico(nextId) {
+    setServicoId(nextId);
+    setSlot(null);
+    if (nextId) {
+      setStep((current) => (current < 1 ? 1 : current));
+    }
+  }
+
+  function selectDate(nextDate) {
+    setDate(nextDate);
+    setSlot(null);
+  }
+
+  function selectSlot(item) {
+    if (!item || item.status !== "disponivel") return;
+    setSlot(item);
+  }
+
+  function goToStep(nextStep) {
+    if (nextStep === 1 && !servicoId) return;
+    if (nextStep === 2 && (!servicoId || !slot)) return;
+    setStep(nextStep);
+  }
 
   async function submitBooking(e) {
     e.preventDefault();
@@ -156,113 +191,178 @@ export default function PublicAgendaPage() {
         ) : null}
         {!loading && agenda ? (
           <>
-            <section className={s.card}>
-              <h2 className={s.muted} style={{ margin: "0 0 10px", fontSize: "1rem", fontWeight: 600 }}>
-                1) Serviço
-              </h2>
-              <div className={s.formStack}>
-                <select className={s.select} value={servicoId} onChange={(e) => setServicoId(e.target.value)}>
-                  <option value="">Selecione um serviço</option>
-                  {servicos.map((srv) => (
-                    <option key={srv.id} value={srv.id}>
-                      {srv.nome} ({srv.duracao_minutos} min)
-                    </option>
-                  ))}
-                </select>
-                {servicoSelecionado ? (
+            <div className={s.stepsTabs} role="tablist" aria-label="Etapas do agendamento">
+              {STEPS.map((item, index) => {
+                const active = step === index;
+                const done = index < step;
+                const blocked = (index === 1 && !servicoId) || (index === 2 && !servicoId);
+                return (
+                  <button
+                    key={item.id}
+                    type="button"
+                    role="tab"
+                    className={`${s.stepTab} ${active ? s.stepTabActive : ""} ${done ? s.stepTabDone : ""}`}
+                    aria-selected={active}
+                    disabled={blocked}
+                    onClick={() => goToStep(index)}
+                  >
+                    <span className={s.stepTabNumber}>{index + 1}</span>
+                    <span>{item.label}</span>
+                  </button>
+                );
+              })}
+            </div>
+
+            {step === 0 ? (
+              <section className={s.card}>
+                <h2 className={s.muted} style={{ margin: "0 0 10px", fontSize: "1rem", fontWeight: 600 }}>
+                  Escolha o serviço
+                </h2>
+                <div className={s.formStack}>
+                  <select className={s.select} value={servicoId} onChange={(e) => selectServico(e.target.value)}>
+                    <option value="">Selecione um serviço</option>
+                    {servicos.map((srv) => (
+                      <option key={srv.id} value={srv.id}>
+                        {srv.nome} ({srv.duracao_minutos} min)
+                      </option>
+                    ))}
+                  </select>
+                  {servicoSelecionado ? (
+                    <p className={s.muted} style={{ margin: 0 }}>
+                      {servicoSelecionado.descricao || "Sem descrição."}
+                    </p>
+                  ) : null}
+                  <div className={s.btnRow}>
+                    <button type="button" className={s.btnPrimary} disabled={!servicoId} onClick={() => goToStep(1)}>
+                      Continuar
+                    </button>
+                  </div>
+                </div>
+              </section>
+            ) : null}
+
+            {step === 1 ? (
+              <section className={s.card}>
+                <h2 className={s.muted} style={{ margin: "0 0 10px", fontSize: "1rem", fontWeight: 600 }}>
+                  Escolha data e horario
+                </h2>
+                <div className={s.formStack}>
+                  <input
+                    className={s.input}
+                    type="date"
+                    value={date}
+                    min={toDateInput(0)}
+                    onChange={(e) => selectDate(e.target.value)}
+                  />
                   <p className={s.muted} style={{ margin: 0 }}>
-                    {servicoSelecionado.descricao || "Sem descrição."}
+                    {formatDateLabel(date)}
+                  </p>
+
+                  <div className={s.slotLegend}>
+                    <span className={`${s.legendPill} ${s.legendAvailable}`}>Disponivel</span>
+                    <span className={`${s.legendPill} ${s.legendBusy}`}>Ocupado</span>
+                    <span className={`${s.legendPill} ${s.legendPast}`}>Passado</span>
+                  </div>
+
+                  <div className={s.slotGrid}>
+                    {slotGrid.map((item) => {
+                      const active = slot?.inicio_em === item.inicio_em;
+                      const isAvailable = item.status === "disponivel";
+                      const className = `${s.slotCell} ${
+                        isAvailable ? s.slotCellAvailable : item.status === "ocupado" ? s.slotCellBusy : s.slotCellPast
+                      } ${active ? s.slotCellActive : ""}`;
+                      return (
+                        <button
+                          key={item.inicio_em}
+                          type="button"
+                          className={className}
+                          disabled={!isAvailable}
+                          onClick={() => selectSlot(item)}
+                        >
+                          {formatSlot(item.inicio_em)}
+                        </button>
+                      );
+                    })}
+                  </div>
+
+                  {servicoId && slots.length === 0 ? (
+                    <span className={s.muted}>Sem horarios disponiveis nessa data.</span>
+                  ) : null}
+
+                  <div className={s.btnRow}>
+                    <button type="button" className={s.btnGhost} onClick={() => goToStep(0)}>
+                      Voltar
+                    </button>
+                    <button type="button" className={s.btnPrimary} disabled={!slot} onClick={() => goToStep(2)}>
+                      Continuar
+                    </button>
+                  </div>
+                </div>
+              </section>
+            ) : null}
+
+            {step === 2 ? (
+              <section className={s.card}>
+                <h2 className={s.muted} style={{ margin: "0 0 10px", fontSize: "1rem", fontWeight: 600 }}>
+                  Seus dados
+                </h2>
+                {slot ? (
+                  <p className={s.muted} style={{ marginTop: 0 }}>
+                    Horario selecionado: {formatDateLabel(date)} as {formatSlot(slot.inicio_em)}
                   </p>
                 ) : null}
-              </div>
-            </section>
-
-            <section className={s.card}>
-              <h2 className={s.muted} style={{ margin: "0 0 10px", fontSize: "1rem", fontWeight: 600 }}>
-                2) Data e horário
-              </h2>
-              <div className={s.formStack}>
-                <input
-                  className={s.input}
-                  type="date"
-                  value={date}
-                  min={toDateInput(0)}
-                  onChange={(e) => setDate(e.target.value)}
-                />
-                <p className={s.muted} style={{ margin: 0 }}>
-                  {formatDateLabel(date)}
-                </p>
-                <div className={s.dayChips}>
-                  {slots.map((sl) => {
-                    const active = slot?.inicio_em === sl.inicio_em;
-                    return (
-                      <button
-                        key={sl.inicio_em}
-                        type="button"
-                        className={`${s.dayChip} ${active ? s.dayChipActive : ""}`}
-                        onClick={() => setSlot(sl)}
-                      >
-                        {formatSlot(sl.inicio_em)}
-                      </button>
-                    );
-                  })}
-                  {servicoId && slots.length === 0 ? (
-                    <span className={s.muted}>Sem horários disponíveis nessa data.</span>
-                  ) : null}
-                </div>
-              </div>
-            </section>
-
-            <section className={s.card}>
-              <h2 className={s.muted} style={{ margin: "0 0 10px", fontSize: "1rem", fontWeight: 600 }}>
-                3) Seus dados
-              </h2>
-              <form className={s.formStack} onSubmit={submitBooking}>
-                <input
-                  className={s.input}
-                  placeholder="Nome completo"
-                  value={nome}
-                  onChange={(e) => setNome(e.target.value)}
-                  required
-                />
-                <input
-                  className={s.input}
-                  type="email"
-                  placeholder="E-mail"
-                  value={email}
-                  onChange={(e) => setEmail(e.target.value)}
-                  required
-                />
-                <input
-                  className={s.input}
-                  inputMode="tel"
-                  placeholder="Telefone"
-                  value={telefone}
-                  onChange={(e) => setTelefone(e.target.value)}
-                  required
-                />
-                {campos.map((c) => (
-                  <div key={c.id}>
-                    <label className={s.label}>{c.rotulo}</label>
-                    <input
-                      className={s.input}
-                      value={camposResp[c.id] || ""}
-                      required={Boolean(c.obrigatorio)}
-                      onChange={(e) => setCamposResp((prev) => ({ ...prev, [c.id]: e.target.value }))}
-                    />
+                <form className={s.formStack} onSubmit={submitBooking}>
+                  <input
+                    className={s.input}
+                    placeholder="Nome completo"
+                    value={nome}
+                    onChange={(e) => setNome(e.target.value)}
+                    required
+                  />
+                  <input
+                    className={s.input}
+                    type="email"
+                    placeholder="E-mail"
+                    value={email}
+                    onChange={(e) => setEmail(e.target.value)}
+                    required
+                  />
+                  <input
+                    className={s.input}
+                    inputMode="tel"
+                    placeholder="Telefone"
+                    value={telefone}
+                    onChange={(e) => setTelefone(e.target.value)}
+                    required
+                  />
+                  {campos.map((c) => (
+                    <div key={c.id}>
+                      <label className={s.label}>{c.rotulo}</label>
+                      <input
+                        className={s.input}
+                        value={camposResp[c.id] || ""}
+                        required={Boolean(c.obrigatorio)}
+                        onChange={(e) => setCamposResp((prev) => ({ ...prev, [c.id]: e.target.value }))}
+                      />
+                    </div>
+                  ))}
+                  <textarea
+                    className={s.textarea}
+                    placeholder="Mensagem (opcional)"
+                    value={mensagem}
+                    onChange={(e) => setMensagem(e.target.value)}
+                  />
+                  <div className={s.btnRow}>
+                    <button type="button" className={s.btnGhost} onClick={() => goToStep(1)}>
+                      Voltar
+                    </button>
+                    <button className={s.btnPrimary} type="submit" disabled={!servicoId || !slot || sending}>
+                      {sending ? "Confirmando..." : "Confirmar agendamento"}
+                    </button>
                   </div>
-                ))}
-                <textarea
-                  className={s.textarea}
-                  placeholder="Mensagem (opcional)"
-                  value={mensagem}
-                  onChange={(e) => setMensagem(e.target.value)}
-                />
-                <button className={s.btnPrimary} type="submit" disabled={!servicoId || !slot || sending}>
-                  {sending ? "Confirmando..." : "Confirmar agendamento"}
-                </button>
-              </form>
-            </section>
+                </form>
+              </section>
+            ) : null}
           </>
         ) : null}
       </div>
