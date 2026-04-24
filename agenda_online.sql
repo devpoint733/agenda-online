@@ -168,6 +168,7 @@ CREATE TABLE `usuarios` (
   `senha` varchar(255) COLLATE utf8mb4_unicode_ci NOT NULL,
   `nome` varchar(160) COLLATE utf8mb4_unicode_ci NOT NULL,
   `telefone` varchar(40) COLLATE utf8mb4_unicode_ci DEFAULT NULL,
+  `avatar_url` varchar(2000) COLLATE utf8mb4_unicode_ci DEFAULT NULL,
   `criado_em` datetime(3) NOT NULL DEFAULT CURRENT_TIMESTAMP(3),
   `atualizado_em` datetime(3) NOT NULL DEFAULT CURRENT_TIMESTAMP(3) ON UPDATE CURRENT_TIMESTAMP(3)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;

@@ -50,13 +50,6 @@ export default function AgendaTab({
             />
             Agenda ativa
           </label>
-          <div>
-            <label className={s.label}>Slug publico (hash)</label>
-            <input className={s.input} value={agendaSlug} readOnly />
-            <p className={s.muted} style={{ marginTop: 8 }}>
-              Este slug e gerado no servidor para evitar conflito global.
-            </p>
-          </div>
           <div className={s.btnRow}>
             <button type="submit" className={s.btnPrimary}>
               Salvar agenda

@@ -3,21 +3,21 @@ import Link from "next/link";
 import { useRouter } from "next/router";
 import { Menu, X } from "lucide-react";
 import SidebarUserFooter from "./SidebarUserFooter";
-import styles from "./AgendaLayout.module.css";
+import styles from "./PainelLayout.module.css";
 
-const nav = (id) => [
-  { href: `/agendas/${id}`, label: "Início" },
-  { href: `/agendas/${id}/agendamentos`, label: "Agendamentos" },
-  { href: `/agendas/${id}/clientes`, label: "Clientes" },
-  { href: `/agendas/${id}/servicos`, label: "Serviços" },
-  { href: `/agendas/${id}/configuracao`, label: "Ajustes" },
-];
-
-export default function AgendaLayout({ children, agendaTitle }) {
+/**
+ * @param {object} props
+ * @param {React.ReactNode} props.children
+ * @param {string} props.title
+ * @param {{ key: string, label: string }[]} props.items
+ * @param {string} props.activeKey
+ * @param {(key: string) => void} props.onSelect
+ */
+export default function PainelLayout({ children, title, items, activeKey, onSelect }) {
   const router = useRouter();
-  const { agendaId } = router.query;
-  const id = agendaId;
   const [open, setOpen] = useState(false);
+
+  const activeLabel = items.find((i) => i.key === activeKey)?.label || title;
 
   useEffect(() => {
     setOpen(false);
@@ -32,25 +32,13 @@ export default function AgendaLayout({ children, agendaTitle }) {
     return () => window.removeEventListener("resize", onResize);
   }, [open]);
 
-  if (!id) {
-    return <div className={styles.shell}>{children}</div>;
-  }
-
-  const items = nav(id);
-  const title = agendaTitle || "Agenda";
-
   return (
     <div className={styles.shell}>
       <header className={styles.topbar}>
-        <button
-          type="button"
-          className={styles.menuBtn}
-          aria-label="Abrir menu"
-          onClick={() => setOpen(true)}
-        >
+        <button type="button" className={styles.menuBtn} aria-label="Abrir menu" onClick={() => setOpen(true)}>
           <Menu size={22} />
         </button>
-        <span className={styles.brand}>{title}</span>
+        <span className={styles.brand}>{activeLabel}</span>
         <Link href="/agendas" className={styles.backLink}>
           Agendas
         </Link>
@@ -67,7 +55,7 @@ export default function AgendaLayout({ children, agendaTitle }) {
           <div className={styles.desktopHeader}>
             <h1>{title}</h1>
           </div>
-          <nav className={styles.nav} aria-label="Principal">
+          <nav className={styles.nav} aria-label="Seções do painel">
             {open && (
               <button
                 type="button"
@@ -79,17 +67,21 @@ export default function AgendaLayout({ children, agendaTitle }) {
                 <X size={22} />
               </button>
             )}
-            {items.map(({ href, label }) => {
-              const active = router.pathname === href;
+            {items.map(({ key, label }) => {
+              const active = activeKey === key;
               return (
-                <Link
-                  key={href}
-                  href={href}
-                  className={`${styles.navLink} ${active ? styles.navLinkActive : ""}`}
-                  onClick={() => setOpen(false)}
+                <button
+                  key={key}
+                  type="button"
+                  className={`${styles.navLink} ${styles.navBtn} ${active ? styles.navLinkActive : ""}`}
+                  aria-current={active ? "page" : undefined}
+                  onClick={() => {
+                    onSelect(key);
+                    setOpen(false);
+                  }}
                 >
                   {label}
-                </Link>
+                </button>
               );
             })}
           </nav>

@@ -2,6 +2,7 @@ import Head from "next/head";
 import Link from "next/link";
 import { useRouter } from "next/router";
 import { useCallback, useEffect, useRef, useState } from "react";
+import { Check, Copy } from "lucide-react";
 import { useAuth } from "../../hooks/useAuth";
 import { api } from "../../lib/api";
 import s from "../../styles/pages.module.css";
@@ -14,6 +15,7 @@ export default function AgendasPage() {
   const [busy, setBusy] = useState(true);
   const [menuOpen, setMenuOpen] = useState(false);
   const [copiedAgendaId, setCopiedAgendaId] = useState(null);
+  const [avatarBroken, setAvatarBroken] = useState(false);
   const profileMenuRef = useRef(null);
 
   const firstName = user?.nome?.split?.(" ")?.[0] || "usuário";
@@ -47,6 +49,10 @@ export default function AgendasPage() {
   useEffect(() => {
     load();
   }, [load]);
+
+  useEffect(() => {
+    setAvatarBroken(false);
+  }, [user?.avatar_url]);
 
   useEffect(() => {
     const onPointerDown = (event) => {
@@ -130,10 +136,27 @@ export default function AgendasPage() {
               aria-haspopup="menu"
               aria-label="Abrir menu do perfil"
             >
-              <span className={s.avatarCircle}>{initials}</span>
+              {user?.avatar_url && !avatarBroken ? (
+                <img
+                  src={user.avatar_url}
+                  alt=""
+                  className={s.avatarButtonImage}
+                  onError={() => setAvatarBroken(true)}
+                />
+              ) : (
+                <span className={s.avatarCircle}>{initials}</span>
+              )}
             </button>
             {menuOpen ? (
               <div className={s.profileDropdown} role="menu">
+                <Link
+                  href="/painel"
+                  className={s.profileActionLink}
+                  role="menuitem"
+                  onClick={() => setMenuOpen(false)}
+                >
+                  Painel de controle
+                </Link>
                 <button
                   type="button"
                   className={s.profileAction}
@@ -161,45 +184,53 @@ export default function AgendasPage() {
         {!busy && list.length === 0 ? (
           <div className={s.card}>
             <p className={s.muted} style={{ margin: 0 }}>
-              Nenhuma agenda ainda. Crie uma pela API ou peça acesso a um proprietário.
+              Nenhuma agenda ainda.{" "}
+              <Link href="/painel" style={{ color: "var(--color-primary)" }}>
+                Crie uma no painel
+              </Link>{" "}
+              ou peça acesso a um proprietário.
             </p>
           </div>
         ) : null}
 
         <div className={s.cardList}>
-          {list.map((a) => (
-            <article key={a.id} className={s.agendaCardLink}>
-              <div className={s.rowBetween} style={{ alignItems: "center", marginBottom: "var(--spacing-sm)" }}>
-                <div>
-                  <strong style={{ fontSize: "1.0625rem" }}>{a.nome}</strong>
-                  <p className={s.muted} style={{ margin: "6px 0 0" }}>
-                    /{a.slug_agenda} · {a.papel === "proprietario" ? "Proprietário" : "Colaborador"}
-                  </p>
+          {list.map((a) => {
+            const isOwner = a.papel === "proprietario";
+            return (
+              <article key={a.id} className={s.agendaCardLink}>
+                <div className={s.agendaCardHeader}>
+                  <div className={s.agendaCardMain}>
+                    <div className={s.agendaCardTitleRow}>
+                      <strong className={s.agendaCardTitle}>{a.nome}</strong>
+                      <button
+                        type="button"
+                        className={s.agendaCopyBtn}
+                        onClick={() => copyPublicRoute(a.slug_agenda, a.id)}
+                        aria-label={copiedAgendaId === a.id ? "Link copiado" : "Copiar link público da agenda"}
+                        title={copiedAgendaId === a.id ? "Copiado!" : "Copiar link público"}
+                      >
+                        {copiedAgendaId === a.id ? (
+                          <Check size={18} strokeWidth={2.5} className={s.agendaCopyIconOk} aria-hidden />
+                        ) : (
+                          <Copy size={18} strokeWidth={2} aria-hidden />
+                        )}
+                      </button>
+                    </div>
+                    <div className={s.agendaRoleRow}>
+                      <span
+                        className={`${s.agendaRoleBadge} ${isOwner ? s.agendaRoleOwner : s.agendaRoleMember}`}
+                      >
+                        {isOwner ? "Proprietário" : "Colaborador"}
+                      </span>
+                    </div>
+                  </div>
+                  <Link href={`/agendas/${a.id}`} className={s.agendaAcessar}>
+                    Acessar
+                  </Link>
                 </div>
-                <span className={s.agendaArrow}>→</span>
-              </div>
-
-              <div className={s.cardActions}>
-                <Link
-                  href={`/agendas/${a.id}`}
-                  className={s.btnGhost}
-                  aria-label="Abrir agenda"
-                  title="Abrir agenda"
-                >
-                  <span aria-hidden="true">↗</span>
-                </Link>
-                <button
-                  type="button"
-                  className={s.btnGhost}
-                  onClick={() => copyPublicRoute(a.slug_agenda, a.id)}
-                  aria-label={copiedAgendaId === a.id ? "Rota copiada" : "Copiar rota pública"}
-                  title={copiedAgendaId === a.id ? "Rota copiada" : "Copiar rota pública"}
-                >
-                  <span aria-hidden="true">{copiedAgendaId === a.id ? "✓" : "⧉"}</span>
-                </button>
-              </div>
-            </article>
-          ))}
+              </article>
+            );
+          })}
         </div>
       </div>
     </>

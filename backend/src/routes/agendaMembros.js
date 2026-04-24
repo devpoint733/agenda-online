@@ -9,7 +9,7 @@ const PAPEIS = ["proprietario", "colaborador"];
 router.get("/", async (req, res) => {
   try {
     const [rows] = await pool.query(
-      `SELECT ua.id, ua.usuario_id, ua.papel, ua.criado_em, u.nome, u.email, u.telefone
+      `SELECT ua.id, ua.usuario_id, ua.papel, ua.criado_em, u.nome, u.email, u.telefone, u.avatar_url
        FROM usuario_agenda ua
        INNER JOIN usuarios u ON u.id = ua.usuario_id
        WHERE ua.agenda_id = ?
@@ -40,7 +40,7 @@ router.post("/", requireProprietario, async (req, res) => {
       [usuarioId, req.params.agendaId, pap]
     );
     const [rows] = await pool.query(
-      `SELECT ua.id, ua.usuario_id, ua.papel, ua.criado_em, u.nome, u.email
+      `SELECT ua.id, ua.usuario_id, ua.papel, ua.criado_em, u.nome, u.email, u.avatar_url
        FROM usuario_agenda ua
        INNER JOIN usuarios u ON u.id = ua.usuario_id
        WHERE ua.id = ?`,

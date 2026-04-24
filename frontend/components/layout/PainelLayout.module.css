@@ -130,6 +130,15 @@
   color: var(--color-primary);
 }
 
+.navBtn {
+  width: 100%;
+  border: none;
+  background: transparent;
+  cursor: pointer;
+  font: inherit;
+  text-align: left;
+}
+
 .main {
   flex: 1;
   width: 100%;
@@ -173,7 +182,7 @@
 
   .main {
     padding: var(--spacing-lg);
-    max-width: 1200px;
+    max-width: 720px;
     margin: 0 auto;
   }
 }
