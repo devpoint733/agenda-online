@@ -1,0 +1,130 @@
+.sidebarFooter {
+  position: relative;
+  flex-shrink: 0;
+  padding: var(--spacing-sm);
+  border-top: 1px solid var(--color-form-border);
+  margin-top: auto;
+}
+
+.profileTrigger {
+  width: 100%;
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 10px var(--spacing-sm);
+  border: none;
+  border-radius: 0.5rem;
+  background: transparent;
+  cursor: pointer;
+  text-align: left;
+  color: inherit;
+  font: inherit;
+  transition: background 0.15s ease;
+}
+
+.profileTrigger:hover {
+  background: var(--color-form-bg);
+}
+
+.profileAvatar {
+  width: 40px;
+  height: 40px;
+  border-radius: 999px;
+  overflow: hidden;
+  flex-shrink: 0;
+  border: 1px solid var(--color-form-border);
+  background: color-mix(in srgb, var(--color-form-bg) 88%, var(--color-primary));
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.profileAvatarImg {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  display: block;
+}
+
+.profileAvatarInitials {
+  font-size: 0.875rem;
+  font-weight: 700;
+  color: var(--color-text-primary);
+}
+
+.profileMeta {
+  flex: 1;
+  min-width: 0;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+}
+
+.profileName {
+  font-size: 0.9375rem;
+  font-weight: 600;
+  color: var(--color-text-primary);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.profileChevron {
+  flex-shrink: 0;
+  color: var(--color-text-secondary);
+  transition: transform 0.2s ease;
+}
+
+.profileChevronOpen {
+  transform: rotate(180deg);
+}
+
+.profileDropdown {
+  position: absolute;
+  bottom: calc(100% + 6px);
+  left: var(--spacing-sm);
+  right: var(--spacing-sm);
+  border: 1px solid var(--color-form-border);
+  border-radius: 0.5rem;
+  background: var(--color-bg-secondary);
+  box-shadow: 0 10px 24px rgba(0, 0, 0, 0.35);
+  z-index: 60;
+  overflow: hidden;
+}
+
+.profileMenuLink {
+  display: flex;
+  align-items: center;
+  width: 100%;
+  min-height: 44px;
+  padding: 0 var(--spacing-md);
+  font-size: 0.9375rem;
+  color: var(--color-text-primary);
+  text-decoration: none;
+  border-bottom: 1px solid var(--color-form-border);
+  box-sizing: border-box;
+}
+
+.profileMenuLink:hover {
+  background: var(--color-form-bg);
+  color: var(--color-primary);
+}
+
+.profileMenuBtn {
+  width: 100%;
+  min-height: 44px;
+  padding: 0 var(--spacing-md);
+  border: none;
+  background: transparent;
+  font-size: 0.9375rem;
+  color: var(--color-text-primary);
+  text-align: left;
+  cursor: pointer;
+  font-family: inherit;
+}
+
+.profileMenuBtn:hover {
+  background: color-mix(in srgb, var(--color-error) 12%, transparent);
+  color: var(--color-error);
+}

@@ -6,6 +6,7 @@ import { api } from "../../../lib/api";
 import AgendaLayout from "../../../components/layout/AgendaLayout";
 import AgendaTab from "../../../components/configuracao/AgendaTab";
 import FuncionamentoTab from "../../../components/configuracao/FuncionamentoTab";
+import ExcecoesTab from "../../../components/configuracao/ExcecoesTab";
 import CamposTab from "../../../components/configuracao/CamposTab";
 import MembrosTab from "../../../components/configuracao/MembrosTab";
 import s from "../../../styles/pages.module.css";
@@ -29,7 +30,7 @@ export default function AgendaConfigPage() {
   const { agendaId } = router.query;
   const { user, loading } = useAuth();
 
-  const [tab, setTab] = useState("funcionamento");
+  const [tab, setTab] = useState("agenda");
   const [error, setError] = useState("");
 
   const [agendaNome, setAgendaNome] = useState("");
@@ -162,6 +163,23 @@ export default function AgendaConfigPage() {
     }
   }
 
+  async function updateDisp(id, payload) {
+    try {
+      await api(`/agendas/${agendaId}/disponibilidade-semanal/${id}`, {
+        method: "PUT",
+        json: {
+          dia_semana: payload.dia_semana,
+          hora_inicio: payload.hora_inicio,
+          hora_fim: payload.hora_fim,
+        },
+      });
+      await loadAll();
+    } catch (err) {
+      setError(err.message || "Erro ao atualizar horário");
+      throw err;
+    }
+  }
+
   async function addExc(payload) {
     try {
       await api(`/agendas/${agendaId}/excecoes-calendario`, {
@@ -181,6 +199,19 @@ export default function AgendaConfigPage() {
       await loadAll();
     } catch (err) {
       setError(err.message || "Erro ao excluir exceção");
+    }
+  }
+
+  async function updateExc(id, payload) {
+    try {
+      await api(`/agendas/${agendaId}/excecoes-calendario/${id}`, {
+        method: "PUT",
+        json: payload,
+      });
+      await loadAll();
+    } catch (err) {
+      setError(err.message || "Erro ao atualizar exceção");
+      throw err;
     }
   }
 
@@ -247,6 +278,7 @@ export default function AgendaConfigPage() {
         {[
           ["agenda", "Agenda"],
           ["funcionamento", "Funcionamento"],
+          ["excecoes", "Exceções"],
           ["campos", "Campos"],
           ["membros", "Equipe"],
         ].map(([k, label]) => (
@@ -285,13 +317,14 @@ export default function AgendaConfigPage() {
         <FuncionamentoTab
           DIAS={DIAS}
           disp={disp}
-          exce={exce}
-          dayLabel={dayLabel}
           onAddDisp={addDisp}
+          onUpdateDisp={updateDisp}
           onDeleteDisp={delDisp}
-          onAddExc={addExc}
-          onDeleteExc={delExc}
         />
+      ) : null}
+
+      {tab === "excecoes" ? (
+        <ExcecoesTab exce={exce} dayLabel={dayLabel} onAddExc={addExc} onUpdateExc={updateExc} onDeleteExc={delExc} />
       ) : null}
 
       {tab === "campos" ? <CamposTab campos={campos} onAdd={addCampo} onDelete={delCampo} /> : null}

@@ -95,15 +95,6 @@ export default function LoginPage() {
             Entrar
           </button>
         </form>
-        <p className={s.muted} style={{ marginTop: "1.5rem" }}>
-          <Link href="/register" style={{ color: "var(--color-primary)" }}>
-            Criar conta
-          </Link>
-          {" · "}
-          <Link href="/" style={{ color: "var(--color-primary)" }}>
-            Início
-          </Link>
-        </p>
       </div>
     </>
   );

@@ -62,3 +62,34 @@ export async function api(path, options = {}) {
 
   return data;
 }
+
+/**
+ * Envia imagem de avatar (multipart, campo "imagem") para Cloudinary via API.
+ * @param {File} file
+ */
+export async function uploadUserAvatar(file) {
+  const url = `${baseUrl()}/usuarios/avatar`;
+  const headers = new Headers();
+  const token = getStoredToken();
+  if (token) {
+    headers.set("Authorization", `Bearer ${token}`);
+  }
+  const body = new FormData();
+  body.append("imagem", file);
+  const res = await fetch(url, { method: "POST", headers, body });
+  const text = await res.text();
+  let data = null;
+  if (text) {
+    try {
+      data = JSON.parse(text);
+    } catch {
+      data = text;
+    }
+  }
+  if (!res.ok) {
+    const msg =
+      typeof data === "object" && data && "error" in data ? data.error : res.statusText;
+    throw new Error(typeof msg === "string" ? msg : "Erro no upload");
+  }
+  return data;
+}

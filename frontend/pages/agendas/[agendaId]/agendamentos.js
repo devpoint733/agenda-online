@@ -3,7 +3,7 @@ import { useRouter } from "next/router";
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { format, parseISO } from "date-fns";
 import { ptBR } from "date-fns/locale";
-import { DndContext, PointerSensor, useSensor, useSensors, closestCorners } from "@dnd-kit/core";
+import { DndContext, DragOverlay, PointerSensor, useSensor, useSensors, closestCorners } from "@dnd-kit/core";
 import { SortableContext, verticalListSortingStrategy, useSortable } from "@dnd-kit/sortable";
 import { CSS } from "@dnd-kit/utilities";
 import { useAuth } from "../../../hooks/useAuth";
@@ -38,10 +38,35 @@ function badgeClass(situacao) {
   return s.badgeNeu;
 }
 
+function KanbanCardFace({ item, clienteNome, servicoNome, showId = true }) {
+  return (
+    <>
+      <div className={s.rowBetween}>
+        <span className={`${s.badge} ${badgeClass(item.situacao)}`}>{item.situacao?.replace("_", " ")}</span>
+        {showId ? <span className={s.muted}>#{item.id}</span> : null}
+      </div>
+      <p className={s.kanbanTitle}>{clienteNome || "Cliente"}</p>
+      <p className={s.muted} style={{ margin: "0 0 6px" }}>
+        {servicoNome || "Serviço"}
+      </p>
+      <p className={s.muted} style={{ margin: 0 }}>
+        {fmt(item.inicio_em)} - {fmt(item.fim_em)}
+      </p>
+    </>
+  );
+}
+
 function toMysqlDatetime(v) {
   if (!v) return null;
   const x = String(v).replace("T", " ");
   return x.length === 16 ? `${x}:00` : x;
+}
+
+function resolveDropStatus(overId, rows) {
+  if (!overId) return null;
+  if (String(overId).startsWith("col-")) return String(overId).replace("col-", "");
+  const target = rows.find((r) => String(r.id) === String(overId));
+  return target?.situacao || null;
 }
 
 function AgendamentoCard({ item, clienteNome, servicoNome, mobile = false }) {
@@ -53,34 +78,32 @@ function AgendamentoCard({ item, clienteNome, servicoNome, mobile = false }) {
   const style = {
     transform: CSS.Transform.toString(transform),
     transition,
-    opacity: isDragging ? 0.5 : 1,
   };
 
   return (
-    <div ref={setNodeRef} style={style} className={s.kanbanCard} {...attributes} {...listeners}>
-      <div className={s.rowBetween}>
-        <span className={`${s.badge} ${badgeClass(item.situacao)}`}>{item.situacao?.replace("_", " ")}</span>
-        {!mobile ? <span className={s.muted}>#{item.id}</span> : null}
-      </div>
-      <p className={s.kanbanTitle}>{clienteNome || "Cliente"}</p>
-      <p className={s.muted} style={{ margin: "0 0 6px" }}>
-        {servicoNome || "Serviço"}
-      </p>
-      <p className={s.muted} style={{ margin: 0 }}>
-        {fmt(item.inicio_em)} - {fmt(item.fim_em)}
-      </p>
+    <div
+      ref={setNodeRef}
+      style={style}
+      className={`${s.kanbanCard} ${isDragging ? s.kanbanCardSource : ""}`}
+      {...attributes}
+      {...listeners}
+    >
+      <KanbanCardFace item={item} clienteNome={clienteNome} servicoNome={servicoNome} showId={!mobile} />
     </div>
   );
 }
 
-function ColumnDroppable({ col, items, clienteMap, servicoMap }) {
+function ColumnDroppable({ col, items, clienteMap, servicoMap, isDropTarget }) {
   const { setNodeRef } = useSortable({
     id: `col-${col.key}`,
     data: { type: "column", status: col.key },
   });
 
   return (
-    <section ref={setNodeRef} className={s.kanbanColumn}>
+    <section
+      ref={setNodeRef}
+      className={`${s.kanbanColumn} ${isDropTarget ? s.kanbanColumnDropTarget : ""}`}
+    >
       <div className={s.rowBetween} style={{ alignItems: "center", marginBottom: 8 }}>
         <h3 className={s.kanbanColumnTitle}>{col.label}</h3>
         <span className={s.badge + " " + s.badgeNeu}>{items.length}</span>
@@ -118,6 +141,8 @@ export default function AgendaAgendamentosPage() {
   const [fim, setFim] = useState("");
   const [situacao, setSituacao] = useState("confirmado");
   const [saving, setSaving] = useState(false);
+  const [activeDragId, setActiveDragId] = useState(null);
+  const [overDropId, setOverDropId] = useState(null);
   const sensors = useSensors(useSensor(PointerSensor, { activationConstraint: { distance: 6 } }));
 
   const clienteMap = useMemo(() => new Map(clientes.map((c) => [c.id, c.nome_completo])), [clientes]);
@@ -129,6 +154,16 @@ export default function AgendaAgendamentosPage() {
     });
     return map;
   }, [rows]);
+
+  const activeDragItem = useMemo(
+    () => (activeDragId ? rows.find((r) => String(r.id) === String(activeDragId)) ?? null : null),
+    [activeDragId, rows]
+  );
+
+  const dropTargetStatus = useMemo(() => {
+    if (!activeDragId || overDropId == null) return null;
+    return resolveDropStatus(overDropId, rows);
+  }, [activeDragId, overDropId, rows]);
 
   const load = useCallback(async () => {
     if (!agendaId) return;
@@ -199,20 +234,15 @@ export default function AgendaAgendamentosPage() {
     }
   }
 
-  function getDropStatus(overId) {
-    if (!overId) return null;
-    if (String(overId).startsWith("col-")) return String(overId).replace("col-", "");
-    const target = rows.find((r) => String(r.id) === String(overId));
-    return target?.situacao || null;
-  }
-
   async function onDragEnd(event) {
     const { active, over } = event;
+    setActiveDragId(null);
+    setOverDropId(null);
     if (!over) return;
     const id = Number(active.id);
     const current = rows.find((r) => r.id === id);
     if (!current) return;
-    const nextStatus = getDropStatus(over.id);
+    const nextStatus = resolveDropStatus(over.id, rows);
     if (!nextStatus || nextStatus === current.situacao) return;
     await patchSituacao(id, nextStatus);
   }
@@ -289,7 +319,17 @@ export default function AgendaAgendamentosPage() {
       </div>
 
       <div className={s.desktopOnly}>
-        <DndContext sensors={sensors} collisionDetection={closestCorners} onDragEnd={onDragEnd}>
+        <DndContext
+          sensors={sensors}
+          collisionDetection={closestCorners}
+          onDragStart={({ active }) => setActiveDragId(String(active.id))}
+          onDragOver={({ over }) => setOverDropId(over ? String(over.id) : null)}
+          onDragEnd={onDragEnd}
+          onDragCancel={() => {
+            setActiveDragId(null);
+            setOverDropId(null);
+          }}
+        >
           <div className={s.kanbanBoard}>
             {COLUMNS.map((col) => (
               <ColumnDroppable
@@ -298,9 +338,23 @@ export default function AgendaAgendamentosPage() {
                 items={rowsByStatus[col.key] || []}
                 clienteMap={clienteMap}
                 servicoMap={servicoMap}
+                isDropTarget={Boolean(
+                  activeDragItem && dropTargetStatus === col.key && dropTargetStatus !== activeDragItem.situacao
+                )}
               />
             ))}
           </div>
+          <DragOverlay dropAnimation={{ duration: 200, easing: "cubic-bezier(0.25, 1, 0.5, 1)" }}>
+            {activeDragItem ? (
+              <div className={`${s.kanbanCard} ${s.kanbanCardOverlay}`}>
+                <KanbanCardFace
+                  item={activeDragItem}
+                  clienteNome={clienteMap.get(activeDragItem.cliente_id)}
+                  servicoNome={servicoMap.get(activeDragItem.servico_id)}
+                />
+              </div>
+            ) : null}
+          </DragOverlay>
         </DndContext>
       </div>
 
